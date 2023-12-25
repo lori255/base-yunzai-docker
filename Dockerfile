@@ -7,11 +7,11 @@ RUN dos2unix /res/entrypoint.sh \
 
 FROM node:lts-bullseye-slim AS runtime
 
-ARG BUNDLE_FFMPEG true
-ARG BUNDLE_POETRY false
-ARG USE_APT_MIRROR true
-ARG USE_NPM_MIRROR true
-ARG USE_PYPI_MIRROR true
+ARG BUNDLE_FFMPEG=true
+ARG BUNDLE_POETRY=false
+ARG USE_APT_MIRROR=true
+ARG USE_NPM_MIRROR=true
+ARG USE_PYPI_MIRROR=true
 
 RUN export BUNDLE_FFMPEG=${BUNDLE_FFMPEG:-true} \
     && export BUNDLE_POETRY=${BUNDLE_POETRY:-true} \
