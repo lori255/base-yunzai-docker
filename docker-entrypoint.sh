@@ -15,6 +15,7 @@ WORK_DIR="/app/Yunzai"
 MIAO_PLUGIN_PATH="/app/Yunzai/plugins/miao-plugin"
 GUOBA_PLUGIN_PATH="/app/Yunzai/plugins/Guoba-Plugin"
 YUNZAI_REPO_URL=${YUNZAI_REPO_URL}
+PM2_LOGS_LINES=${PM2_LOGS_LINES:-2000}
 
 if [[ ! -d "$HOME/.ovo" ]]; then
     mkdir ~/.ovo
@@ -136,4 +137,4 @@ if [[ $EXIT_CODE != 0 ]]; then
 	echo -e "\n ================ \n ${Warn} ${YellowBG} 启动 Yunzai 失败 ${Font} \n ================ \n"
 	tail -f /dev/null
 fi
-/app/Yunzai/node_modules/pm2/bin/pm2 logs
+/app/Yunzai/node_modules/pm2/bin/pm2 logs --lines $PM2_LOGS_LINES
