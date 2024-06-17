@@ -15,6 +15,7 @@ WORK_DIR="/app/Yunzai"
 MIAO_PLUGIN_PATH="/app/Yunzai/plugins/miao-plugin"
 GUOBA_PLUGIN_PATH="/app/Yunzai/plugins/Guoba-Plugin"
 YUNZAI_REPO_URL=${YUNZAI_REPO_URL}
+YUNZAI_REPO_BRANCH=${YUNZAI_REPO_BRANCH:-master}
 PM2_LOGS_LINES=${PM2_LOGS_LINES:-2000}
 
 if [[ ! -d "$HOME/.ovo" ]]; then
@@ -28,19 +29,19 @@ fi
 
 echo -e "\n ================ \n ${Info} ${GreenBG} 拉取 Yunzai 更新 ${Font} \n ================ \n"
 cd $WORK_DIR
-if [ ! -d $MIAO_PLUGIN_PATH"/.git" ]; then
+if [ ! -d $WORK_DIR"/.git" ]; then
     echo -e "\n ${Warn} ${YellowBG} 检测到云崽目前没有安装，开始自动下载 ${Font} \n"
-    git clone --depth=1 $YUNZAI_REPO_URL .
+    git clone --depth=1 $YUNZAI_REPO_URL --branch $YUNZAI_REPO_BRANCH $WORK_DIR
 fi
 
 if [[ -z $(git status -s) ]]; then
     echo -e " ${Warn} ${YellowBG} 当前工作区有修改，尝试暂存后更新。${Font}"
     git add .
     git stash
-    git pull origin master --allow-unrelated-histories --rebase
+    git pull origin $YUNZAI_REPO_BRANCH --allow-unrelated-histories --rebase
     git stash pop
 else
-    git pull origin master --allow-unrelated-histories
+    git pull origin $YUNZAI_REPO_BRANCH --allow-unrelated-histories
 fi
 
 if [[ ! -f "$HOME/.ovo/yunzai.ok" ]]; then
