@@ -12,8 +12,6 @@ Info="${GreenBG}[信息]${Font}"
 Warn="${YellowBG}[提示]${Font}"
 
 WORK_DIR="/app/Yunzai"
-MIAO_PLUGIN_PATH="/app/Yunzai/plugins/miao-plugin"
-GUOBA_PLUGIN_PATH="/app/Yunzai/plugins/Guoba-Plugin"
 YUNZAI_REPO_URL=${YUNZAI_REPO_URL}
 YUNZAI_REPO_BRANCH=${YUNZAI_REPO_BRANCH:-master}
 PM2_LOGS_LINES=${PM2_LOGS_LINES:-2000}
@@ -54,68 +52,7 @@ fi
 
 echo -e "\n ================ \n ${Version} ${BlueBG} Yunzai 版本信息 ${Font} \n ================ \n"
 git log -1 --pretty=format:"%h - %an, %ar (%cd) : %s"
-if [ ! -d $MIAO_PLUGIN_PATH"/.git" ]; then
-    echo -e "\n ${Warn} ${YellowBG} 检测到没有安装miao-plugin，开始自动下载 ${Font} \n"
-    git clone --depth=1 https://gitee.com/yoimiya-kokomi/miao-plugin.git ./plugins/miao-plugin/
-fi
 
-if [ -d $MIAO_PLUGIN_PATH"/.git" ]; then
-    echo -e "\n ================ \n ${Info} ${GreenBG} 拉取 喵喵插件 更新 ${Font} \n ================ \n"
-    cd $MIAO_PLUGIN_PATH
-    if [[ -n $(git status -s) ]]; then
-        echo -e " ${Warn} ${YellowBG} 当前工作区有修改，尝试暂存后更新。${Font}"
-        git add .
-        git stash
-        git pull origin master --allow-unrelated-histories --rebase
-        git stash pop
-    else
-        git pull origin master --allow-unrelated-histories
-    fi
-
-    if [[ ! -f "$HOME/.ovo/miao.ok" ]]; then
-        set -e
-        echo -e "\n ================ \n ${Info} ${GreenBG} 更新 喵喵插件 运行依赖 ${Font} \n ================ \n"
-        pnpm install
-        touch ~/.ovo/miao.ok
-        set +e
-    fi
-
-    echo -e "\n ================ \n ${Version} ${BlueBG} 喵喵插件版本信息 ${Font} \n ================ \n"
-    git log -1 --pretty=format:"%h - %an, %ar (%cd) : %s"
-fi
-
-if [ ! -d $GUOBA_PLUGIN_PATH"/.git" ]; then
-
-    echo -e "\n ${Warn} ${YellowBG} 检测到没有安装Guoba-Plugin，开始自动下载 ${Font} \n"
-    git clone --depth=1 https://gitee.com/guoba-yunzai/guoba-plugin.git ./plugins/Guoba-Plugin/
-fi
-
-if [ -d $GUOBA_PLUGIN_PATH"/.git" ]; then
-    echo -e "\n ================ \n ${Info} ${GreenBG} 拉取 Guoba-Plugin 插件更新 ${Font} \n ================ \n"
-    cd $GUOBA_PLUGIN_PATH
-
-    if [[ -n $(git status -s) ]]; then
-        echo -e " ${Warn} ${YellowBG} 当前工作区有修改，尝试暂存后更新。${Font}"
-        git add .
-        git stash
-        git pull origin master --allow-unrelated-histories --rebase
-        git stash pop
-    else
-        git pull origin master --allow-unrelated-histories
-    fi
-
-    if [[ ! -f "$HOME/.ovo/guoba.ok" ]]; then
-        set -e
-        echo -e "\n ================ \n ${Info} ${GreenBG} 更新 Guoba-Plugin 插件运行依赖 ${Font} \n ================ \n"
-        pnpm add multer body-parser jsonwebtoken -w
-        touch ~/.ovo/guoba.ok
-        set +e
-    fi
-
-    echo -e "\n ================ \n ${Version} ${BlueBG} Guoba-Plugin 插件版本信息 ${Font} \n ================ \n"
-
-    git log -1 --pretty=format:"%h - %an, %ar (%cd) : %s"
-fi
 
 set -e
 
