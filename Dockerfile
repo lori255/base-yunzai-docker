@@ -56,9 +56,9 @@ RUN if [ "$BUNDLE_POETRY" = "true" ]; then \
 
 # Install global npm packages with conditional registry
 RUN if [ "$USE_NPM_MIRROR" = "true" ]; then \
-    npm install -g pnpm yarn --registry=https://registry.npmmirror.com; \
+    npm install -g pnpm yarn --registry=https://registry.npmmirror.com --force; \
     else \
-    npm install -g pnpm yarn; \
+    npm install -g pnpm yarn --force; \
     fi
 
 # Configure git
