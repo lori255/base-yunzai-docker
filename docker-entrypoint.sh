@@ -66,6 +66,7 @@ if [[ ! -f "$HOME/.ovo/yunzai.ok" ]]; then
     set +e
 fi
 
+# 版本信息
 echo -e "\n ================ \n ${Version} ${BlueBG} Yunzai 版本信息 ${Font} \n ================ \n"
 git log -1 --pretty=format:"%h - %an, %ar (%cd) : %s"
 
@@ -84,6 +85,14 @@ fi
 echo -e "\n ================ \n ${Info} ${GreenBG} 启动 Yunzai ${Font} \n ================ \n"
 
 set +e
+
+# 如果 MAJOR_VERSION 大于等于 4，先执行 yarn build
+if (( MAJOR_VERSION >= 4 )); then
+    echo -e "\n ================ \n ${Info} ${GreenBG} 执行 yarn build ${Font} \n ================ \n"
+    $PACKAGE_MANAGER build
+fi
+
+# 启动应用程序
 $PACKAGE_MANAGER start
 EXIT_CODE=$?
 

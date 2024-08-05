@@ -46,7 +46,7 @@ RUN export BUNDLE_FFMPEG=${BUNDLE_FFMPEG:-true} \
     \
     && _NPM_MIRROR_FLAG="" \
     && if [ "$USE_NPM_MIRROR"x = "true"x ]; then _NPM_MIRROR_FLAG="--registry=https://registry.npmmirror.com"; fi \
-    && npm install pnpm -g $_NPM_MIRROR_FLAG \
+    && npm install pnpm yarn -g $_NPM_MIRROR_FLAG \
     \
     && ((test "$BUNDLE_POETRY"x = "true"x \
     && apt-get update \
