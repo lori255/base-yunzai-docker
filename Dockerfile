@@ -54,8 +54,12 @@ RUN if [ "$BUNDLE_POETRY" = "true" ]; then \
     && rm -rf /var/lib/apt/lists/*; \
     fi
 
-# Install global npm packages
-RUN npm install -g pnpm yarn $(test "$USE_NPM_MIRROR" = "true" && echo --registry=https://registry.npmmirror.com || true)
+# Install global npm packages with conditional registry
+RUN if [ "$USE_NPM_MIRROR" = "true" ]; then \
+    npm install -g pnpm yarn --registry=https://registry.npmmirror.com; \
+    else \
+    npm install -g pnpm yarn; \
+    fi
 
 # Configure git
 RUN git config --global --add safe.directory '*' \
