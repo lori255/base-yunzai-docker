@@ -1,65 +1,74 @@
-# Stage 1: Resource Stage
-FROM busybox:latest AS resource
-ADD docker-entrypoint.sh /res/entrypoint.sh
-RUN dos2unix /res/entrypoint.sh \
-    && chmod +x /res/entrypoint.sh
+# Stage 1: Build Stage — download FFmpeg and prepare entrypoint.
+# Build-only tools (wget, xz-utils, dos2unix) are discarded with this stage.
+FROM node:lts-bullseye-slim AS builder
 
-# Stage 2: Runtime Stage
-FROM node:lts-bullseye-slim AS runtime
-
-# Set environment variables
 ARG BUNDLE_FFMPEG=true
+
+RUN mkdir -p /opt/ffmpeg-bin \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends wget xz-utils dos2unix ca-certificates \
+    && if [ "$BUNDLE_FFMPEG" = "true" ]; then \
+       ARCH=$(dpkg --print-architecture) \
+       && wget -q "https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-${ARCH}-static.tar.xz" \
+       && mkdir -p /tmp/ffmpeg \
+       && tar -xf "./ffmpeg-git-${ARCH}-static.tar.xz" -C /tmp/ffmpeg --strip-components 1 \
+       && mv /tmp/ffmpeg/ffmpeg  /opt/ffmpeg-bin/ffmpeg \
+       && mv /tmp/ffmpeg/ffprobe /opt/ffmpeg-bin/ffprobe \
+       && chmod +x /opt/ffmpeg-bin/* \
+       && rm -rf /tmp/ffmpeg "./ffmpeg-git-${ARCH}-static.tar.xz"; \
+    fi \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY docker-entrypoint.sh /opt/entrypoint.sh
+RUN dos2unix /opt/entrypoint.sh && chmod +x /opt/entrypoint.sh
+
+# Stage 2: Production Stage — lean runtime image
+FROM node:lts-bullseye-slim AS prod
+
 ARG BUNDLE_POETRY=false
-ARG USE_APT_MIRROR=true
 ARG USE_NPM_MIRROR=true
 ARG USE_PYPI_MIRROR=true
 
-ENV BUNDLE_FFMPEG=${BUNDLE_FFMPEG} \
-    BUNDLE_POETRY=${BUNDLE_POETRY} \
-    USE_APT_MIRROR=${USE_APT_MIRROR} \
-    USE_NPM_MIRROR=${USE_NPM_MIRROR} \
-    USE_PYPI_MIRROR=${USE_PYPI_MIRROR}
-
-# Update and install dependencies
+# Runtime packages only — no build tools.
+# Single layer: install + font-cache + cleanup.
 RUN apt-get update \
-    && apt-get upgrade -y \
-    && apt-get install -y wget xz-utils dos2unix curl gnupg git fonts-wqy-microhei xfonts-utils chromium fontconfig libxss1 libgl1 vim jq \
+    && apt-get install -y --no-install-recommends \
+       curl gnupg git jq \
+       fonts-wqy-microhei xfonts-utils fontconfig \
+       chromium libxss1 libgl1 \
+    && fc-cache -f -v \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* /tmp/*
 
-# Conditionally install FFmpeg
-RUN if [ "$BUNDLE_FFMPEG" = "true" ]; then \
-    wget -q https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-$(dpkg --print-architecture)-static.tar.xz \
-    && mkdir -p /res/ffmpeg \
-    && tar -xvf ./ffmpeg-git-$(dpkg --print-architecture)-static.tar.xz -C /res/ffmpeg --strip-components 1 \
-    && cp /res/ffmpeg/ffmpeg /usr/bin/ffmpeg \
-    && cp /res/ffmpeg/ffprobe /usr/bin/ffprobe \
-    && rm ./ffmpeg-git-$(dpkg --print-architecture)-static.tar.xz; \
-    fi
+# Copy FFmpeg binaries from builder (no-op if BUNDLE_FFMPEG was false)
+COPY --from=builder /opt/ffmpeg-bin/ /usr/local/bin/
 
-# Conditionally install Poetry
+# Conditionally install Poetry (needs python3 at runtime, so stays in prod)
 RUN if [ "$BUNDLE_POETRY" = "true" ]; then \
-    apt-get update \
-    && apt-get install -y python3-pip python3-venv \
-    && ln -s /usr/bin/python3 /usr/bin/python \
-    && POETRY_HOME=$HOME/venv-poetry \
-    && python -m venv $POETRY_HOME \
-    && _PYPI_MIRROR_FLAG="" \
-    && if [ "$USE_PYPI_MIRROR" = "true" ]; then _PYPI_MIRROR_FLAG="-i https://pypi.tuna.tsinghua.edu.cn/simple"; fi \
-    && $POETRY_HOME/bin/pip install --upgrade pip setuptools $_PYPI_MIRROR_FLAG \
-    && $POETRY_HOME/bin/pip install poetry $_PYPI_MIRROR_FLAG \
-    && ln -s $POETRY_HOME/bin/poetry /usr/bin \
-    && poetry config virtualenvs.in-project true \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*; \
+       apt-get update \
+       && apt-get install -y --no-install-recommends python3-pip python3-venv \
+       && ln -sf /usr/bin/python3 /usr/bin/python \
+       && POETRY_HOME=$HOME/venv-poetry \
+       && python -m venv "$POETRY_HOME" \
+       && _PYPI_MIRROR_FLAG="" \
+       && if [ "$USE_PYPI_MIRROR" = "true" ]; then \
+              _PYPI_MIRROR_FLAG="-i https://pypi.tuna.tsinghua.edu.cn/simple"; \
+          fi \
+       && "$POETRY_HOME/bin/pip" install --upgrade pip setuptools $_PYPI_MIRROR_FLAG \
+       && "$POETRY_HOME/bin/pip" install poetry $_PYPI_MIRROR_FLAG \
+       && ln -s "$POETRY_HOME/bin/poetry" /usr/local/bin/poetry \
+       && poetry config virtualenvs.in-project true \
+       && apt-get clean \
+       && rm -rf /var/lib/apt/lists/*; \
     fi
 
-# Install global npm packages with conditional registry
+# Install global npm packages and clean cache
 RUN if [ "$USE_NPM_MIRROR" = "true" ]; then \
-    npm install -g pnpm yarn --registry=https://registry.npmmirror.com --force; \
+       npm install -g pnpm yarn --registry=https://registry.npmmirror.com --force; \
     else \
-    npm install -g pnpm yarn --force; \
-    fi
+       npm install -g pnpm yarn --force; \
+    fi \
+    && npm cache clean --force
 
 # Configure git
 RUN git config --global --add safe.directory '*' \
@@ -67,20 +76,12 @@ RUN git config --global --add safe.directory '*' \
     && git config --global user.email "2539939333@qq.com" \
     && git config --global user.name "lori"
 
-# Cleanup
-RUN apt-get autoremove -y \
-    && rm -rf /tmp/* \
-    && fc-cache -f -v
-
-# Stage 3: Production Stage
-FROM runtime AS prod
-
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 RUN mkdir -p /app/Yunzai
 
-COPY --from=resource /res/entrypoint.sh /app/entrypoint.sh
+COPY --from=builder /opt/entrypoint.sh /app/entrypoint.sh
 
 WORKDIR /app/Yunzai
 
