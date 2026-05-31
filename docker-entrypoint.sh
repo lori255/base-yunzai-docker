@@ -13,26 +13,32 @@ Info="${GreenBG}[信息]${Font}"
 Warn="${YellowBG}[提示]${Font}"
 
 WORK_DIR="/app/Yunzai"
-YUNZAI_REPO_URL=${YUNZAI_REPO_URL}
-YUNZAI_REPO_BRANCH=${YUNZAI_REPO_BRANCH:-master}
-PM2_LOGS_LINES=${PM2_LOGS_LINES:-2000}
+YUNZAI_REPO_URL="${YUNZAI_REPO_URL}"
+YUNZAI_REPO_BRANCH="${YUNZAI_REPO_BRANCH:-master}"
+PM2_LOGS_LINES="${PM2_LOGS_LINES:-2000}"
 
 # 创建 .ovo 目录（如果不存在）
 mkdir -p ~/.ovo
 
 # 检查是否设置了 YUNZAI_REPO_URL 环境变量
-if [[ -z $YUNZAI_REPO_URL ]]; then
+if [[ -z "$YUNZAI_REPO_URL" ]]; then
     echo -e "\n ================ \n ${Warn} ${YellowBG} 未设置环境变量 YUNZAI_REPO_URL ${Font} \n ================ \n"
     exit 1
 fi
 
+# 验证 YUNZAI_REPO_URL 是合法的 git URL（防止命令注入）
+if ! echo "$YUNZAI_REPO_URL" | grep -qE '^https?://[a-zA-Z0-9._/-]+\.git$'; then
+    echo -e "\n ================ \n ${Warn} ${YellowBG} YUNZAI_REPO_URL 格式不合法，仅支持 http(s) .git 地址 ${Font} \n ================ \n"
+    exit 1
+fi
+
 echo -e "\n ================ \n ${Info} ${GreenBG} 拉取 Yunzai 更新 ${Font} \n ================ \n"
-cd $WORK_DIR
+cd "$WORK_DIR"
 
 # 检查是否为 Git 仓库
-if [ ! -d $WORK_DIR/.git ]; then
+if [ ! -d "$WORK_DIR/.git" ]; then
     echo -e "\n ${Warn} ${YellowBG} 检测到云崽目前没有安装，开始自动下载 ${Font} \n"
-    git clone --depth=1 $YUNZAI_REPO_URL --branch $YUNZAI_REPO_BRANCH $WORK_DIR
+    git clone --depth=1 "$YUNZAI_REPO_URL" --branch "$YUNZAI_REPO_BRANCH" "$WORK_DIR"
 fi
 
 # 检查工作区状态并更新代码
@@ -40,10 +46,10 @@ if [[ -z $(git status -s) ]]; then
     echo -e " ${Warn} ${YellowBG} 当前工作区有修改，尝试暂存后更新。${Font}"
     git add .
     git stash
-    git pull origin $YUNZAI_REPO_BRANCH --allow-unrelated-histories --rebase
+    git pull origin "$YUNZAI_REPO_BRANCH" --allow-unrelated-histories --rebase
     git stash pop
 else
-    git pull origin $YUNZAI_REPO_BRANCH --allow-unrelated-histories
+    git pull origin "$YUNZAI_REPO_BRANCH" --allow-unrelated-histories
 fi
 
 # 获取 package.json 中的版本号
@@ -72,7 +78,7 @@ git log -1 --pretty=format:"%h - %an, %ar (%cd) : %s"
 
 set -e
 
-cd $WORK_DIR
+cd "$WORK_DIR"
 
 echo -e "\n ================ \n ${Info} ${GreenBG} 初始化 Docker 环境 ${Font} \n ================ \n"
 

@@ -62,10 +62,10 @@ RUN if [ "$USE_NPM_MIRROR" = "true" ]; then \
     fi
 
 # Configure git
-RUN git config --global --add safe.directory '*' \
+RUN git config --global --add safe.directory /app/Yunzai \
     && git config --global pull.rebase false \
-    && git config --global user.email "2539939333@qq.com" \
-    && git config --global user.name "lori"
+    && git config --global user.email "yunzai-docker@users.noreply.github.com" \
+    && git config --global user.name "yunzai-docker"
 
 # Cleanup
 RUN apt-get autoremove -y \
@@ -78,10 +78,14 @@ FROM runtime AS prod
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
-RUN mkdir -p /app/Yunzai
+RUN mkdir -p /app/Yunzai \
+    && groupadd -r yunzai && useradd -r -g yunzai -d /app yunzai \
+    && chown -R yunzai:yunzai /app
 
 COPY --from=resource /res/entrypoint.sh /app/entrypoint.sh
 
 WORKDIR /app/Yunzai
+
+USER yunzai
 
 ENTRYPOINT ["/app/entrypoint.sh"]
